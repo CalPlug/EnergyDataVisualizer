@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2010
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Percept", "Percept\Percept.csproj", "{4DC0F545-5345-4883-8DE7-6E1B79AC8319}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|iPhone = Debug|iPhone
+		Debug|iPhoneSimulator = Debug|iPhoneSimulator
+		Release|iPhone = Release|iPhone
+		Release|iPhoneSimulator = Release|iPhoneSimulator
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Debug|iPhone.ActiveCfg = Debug|iPhone
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Debug|iPhone.Build.0 = Debug|iPhone
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Debug|iPhoneSimulator.ActiveCfg = Debug|iPhoneSimulator
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Debug|iPhoneSimulator.Build.0 = Debug|iPhoneSimulator
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Release|iPhone.ActiveCfg = Release|iPhone
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Release|iPhone.Build.0 = Release|iPhone
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Release|iPhoneSimulator.ActiveCfg = Release|iPhoneSimulator
+		{4DC0F545-5345-4883-8DE7-6E1B79AC8319}.Release|iPhoneSimulator.Build.0 = Release|iPhoneSimulator
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A27D44B8-C0F8-409B-B88D-7080131AD6B5}
+	EndGlobalSection
+EndGlobal

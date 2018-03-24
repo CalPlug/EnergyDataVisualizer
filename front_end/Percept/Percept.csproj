@@ -1,0 +1,181 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">iPhoneSimulator</Platform>
+    <ProjectTypeGuids>{FEACFBD2-3405-455C-9665-78FE426C6842};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <ProjectGuid>{4DC0F545-5345-4883-8DE7-6E1B79AC8319}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Percept</RootNamespace>
+    <IPhoneResourcePrefix>Resources</IPhoneResourcePrefix>
+    <AssemblyName>Percept</AssemblyName>
+    <UseMSBuildEngine>True</UseMSBuildEngine>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|iPhoneSimulator' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\iPhoneSimulator\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+    <MtouchArch>x86_64</MtouchArch>
+    <MtouchLink>None</MtouchLink>
+    <MtouchDebug>true</MtouchDebug>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|iPhoneSimulator' ">
+    <DebugType>full</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\iPhoneSimulator\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <MtouchLink>None</MtouchLink>
+    <MtouchArch>x86_64</MtouchArch>
+    <ConsolePause>false</ConsolePause>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|iPhone' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\iPhone\Debug</OutputPath>
+    <DefineConstants>DEBUG;</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <ConsolePause>false</ConsolePause>
+    <MtouchArch>ARM64</MtouchArch>
+    <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
+    <CodesignKey>iPhone Developer: nikitat1994@gmail.com (ZVWG28A9TU)</CodesignKey>
+    <MtouchDebug>true</MtouchDebug>
+    <MtouchLink>None</MtouchLink>
+    <MtouchFastDev>false</MtouchFastDev>
+    <CodesignProvision>iOS Team Provisioning Profile: com.visualstudio.atikinsoftware.percept</CodesignProvision>
+    <MtouchSdkVersion>11.2</MtouchSdkVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|iPhone' ">
+    <DebugType>full</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\iPhone\Release</OutputPath>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
+    <MtouchArch>ARM64</MtouchArch>
+    <ConsolePause>false</ConsolePause>
+    <CodesignKey>iPhone Developer: nikitat1994@gmail.com (ZVWG28A9TU)</CodesignKey>
+    <MtouchSdkVersion>11.2</MtouchSdkVersion>
+    <MtouchUseLlvm>true</MtouchUseLlvm>
+    <MtouchFloat32>true</MtouchFloat32>
+    <CodesignProvision>iOS Team Provisioning Profile: com.visualstudio.atikinsoftware.percept</CodesignProvision>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Default' ">
+    <AppExtensionDebugBundleId />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.1\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="Priority Queue, Version=4.1.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OptimizedPriorityQueue.4.1.1\lib\netstandard1.0\Priority Queue.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Core" />
+    <Reference Include="Xamarin.iOS" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <Compile Include="Model\AssociationsWrapper.cs" />
+    <Compile Include="Model\AWSRestStore.cs" />
+    <Compile Include="Model\HitDistanceAverager.cs" />
+    <Compile Include="Model\SensorObjectAssociation.cs" />
+    <Compile Include="Model\IPersistentDataManager.cs" />
+    <Compile Include="Model\NMatrix4Serializer.cs" />
+    <Compile Include="Model\OfflineStore.cs" />
+    <Compile Include="ObjectExtensions\BarcodesRequest.cs" />
+    <Compile Include="ObjectExtensions\CGRectExtensions.cs" />
+    <Compile Include="ObjectExtensions\FixedArray.cs" />
+    <Compile Include="ObjectExtensions\FixedSizeQueue.cs" />
+    <Compile Include="ObjectExtensions\SCNQuaternionExtensions.cs" />
+    <Compile Include="PerceptMenuViewController.cs" />
+    <Compile Include="PerceptMenuViewController.designer.cs">
+      <DependentUpon>PerceptMenuViewController.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PerceptQRViewController.cs" />
+    <Compile Include="PerceptQRViewController.designer.cs">
+      <DependentUpon>PerceptQRViewController.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SCNNodes\Point.cs" />
+    <Compile Include="UIElements\ClassificationPickerModel.cs" />
+    <Compile Include="UIElements\MessageType.cs" />
+    <Compile Include="UIElements\TextManager.cs" />
+    <Compile Include="UIElements\TouchEventType.cs" />
+    <Compile Include="IARViewControllerDelegate.cs" />
+    <Compile Include="IVirtualObjectManagerDelegate.cs" />
+    <Compile Include="SCNNodes\MappingPlane.cs" />
+    <Compile Include="SCNNodes\Plane.cs" />
+    <Compile Include="SCNNodes\SensorDisplay.cs" />
+    <Compile Include="SCNNodes\VirtualObject.cs" />
+    <Compile Include="Utility\FeatureHitTestResult.cs" />
+    <Compile Include="Utility\HitTestRay.cs" />
+    <Compile Include="VirtualObjectManager.cs" />
+    <Compile Include="ObjectExtensions\ARSCNViewExtensions.cs" />
+    <Compile Include="ObjectExtensions\CGPointExtensions.cs" />
+    <Compile Include="ObjectExtensions\ListExtensions.cs" />
+    <Compile Include="ObjectExtensions\Matrix4Extensions.cs" />
+    <Compile Include="ObjectExtensions\SCNVector3Extensions.cs" />
+    <Compile Include="UIElements\Gesture.cs" />
+    <Compile Include="UIElements\SingleFingerGesture.cs" />
+    <Compile Include="UIElements\TwoFingerGesture.cs" />
+    <Compile Include="Utility\Debug.cs" />
+    <ImageAsset Include="Resources\Images.xcassets\Plane.imageset\Contents.json">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <ImageAsset Include="Resources\Images.xcassets\Plane.imageset\grid.png">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <ImageAsset Include="Resources\Images.xcassets\PlaneGreen.imageset\Contents.json">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <ImageAsset Include="Resources\Images.xcassets\PlaneGreen.imageset\grid_green.png">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <ImageAsset Include="Resources\Images.xcassets\SamplePlot.imageset\Contents.json">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <ImageAsset Include="Resources\Images.xcassets\SamplePlot.imageset\random_plot.png">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <InterfaceDefinition Include="Resources\LaunchScreen.xib" />
+    <ImageAsset Include="Resources\Images.xcassets\AppIcons.appiconset\Contents.json">
+      <Visible>false</Visible>
+    </ImageAsset>
+    <None Include="GettingStarted.Xamarin" />
+    <None Include="Info.plist">
+      <SubType>Designer</SubType>
+    </None>
+    <None Include="Entitlements.plist">
+      <SubType>Designer</SubType>
+    </None>
+    <Compile Include="Main.cs" />
+    <Compile Include="AppDelegate.cs" />
+    <Compile Include="PerceptViewController.cs" />
+    <Compile Include="PerceptViewController.designer.cs">
+      <DependentUpon>PerceptViewController.cs</DependentUpon>
+    </Compile>
+    <InterfaceDefinition Include="Main.storyboard">
+      <SubType>Designer</SubType>
+    </InterfaceDefinition>
+    <None Include="Resources\MobileNet.mlmodel" />
+    <None Include="packages.config" />
+    <InterfaceDefinition Include="PerceptMenuViewController.xib" />
+    <BundleResource Include="Resources\MobileNet.mlmodelc\coremldata.bin" />
+    <BundleResource Include="Resources\MobileNet.mlmodelc\model.espresso.net" />
+    <BundleResource Include="Resources\MobileNet.mlmodelc\model.espresso.shape" />
+    <BundleResource Include="Resources\MobileNet.mlmodelc\model.espresso.weights" />
+    <BundleResource Include="Resources\MobileNet.mlmodelc\model\coremldata.bin" />
+  </ItemGroup>
+  <Import Project="$(MSBuildExtensionsPath)\Xamarin\iOS\Xamarin.iOS.CSharp.targets" />
+</Project>
