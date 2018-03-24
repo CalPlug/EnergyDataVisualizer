@@ -1,0 +1,304 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Percept AWS template
+Parameters:
+    S3BucketName:
+        Type: String
+Resources:
+  SD2DBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  !Join
+                    - ":"
+                    -
+                      - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}"
+                      - !Sub "sensordata2db-${AWS::StackName}"
+                      - "*"
+              -
+                Effect: Allow
+                Action:
+                  - kinesis:Get*
+                  - kinesis:List*
+                  - kinesis:Describe*
+                Resource: "*"
+              -
+                Effect: Allow
+                Action: dynamodb:PutItem
+                Resource: !GetAtt SensorData.Arn
+  SD2ESRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  !Join
+                    - ':'
+                    -
+                      - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}"
+                      - !Sub "sensordata2es-${AWS::StackName}"
+                      - "*"
+              -
+                Effect: Allow
+                Action:
+                  - kinesis:Get*
+                  - kinesis:List*
+                  - kinesis:Describe*
+                Resource: "*"
+              -
+                Effect: Allow
+                Action: es:HttpPost
+                Resource: !GetAtt ElasticsearchService.DomainArn
+  APIGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: "*"
+                Resource: "*"
+  GraphCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: root
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: logs:CreateLogGroup
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*"
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  !Join
+                    - ':'
+                    -
+                      - !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}"
+                      - !Sub "sensordata2es-${AWS::StackName}"
+                      - "*"
+              -
+                Effect: Allow
+                Action: dynamodb:GetItem
+                Resource: !GetAtt SensorMetadata.Arn
+              -
+                Effect: Allow
+                Action: es:*
+                Resource: !GetAtt ElasticsearchService.DomainArn
+  SensorData:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: SensorHash
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: !Sub "SensorData-${AWS::StackName}"
+      KeySchema:
+        -
+          AttributeName: SensorHash
+          KeyType: HASH
+  SensorMetadata:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: uid
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: !Sub "SensorMetadata-${AWS::StackName}"
+      KeySchema:
+        -
+          AttributeName: uid
+          KeyType: HASH
+  SensorAssociation:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: uid
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: !Sub "SensorAssociation-${AWS::StackName}"
+      KeySchema:
+        -
+          AttributeName: uid
+          KeyType: HASH
+  SensorKinesisStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub "SensorStream-${AWS::StackName}"
+      ShardCount: 1
+  ElasticsearchService:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: !Sub "sensores-${AWS::StackName}"
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 15
+        VolumeType: standard
+      ElasticsearchClusterConfig:
+        DedicatedMasterEnabled: false
+        InstanceCount: 1
+        InstanceType: t2.small.elasticsearch
+        ZoneAwarenessEnabled: false
+      ElasticsearchVersion: 5.5
+  GraphCreator:
+      Type: AWS::Lambda::Function
+      Properties:
+          Code:
+              S3Bucket: !Ref S3BucketName
+              S3Key: graphcreator.zip
+          Environment:
+              Variables:
+                  ES_ENDPOINT:
+                      !Join
+                          - "/"
+                          -
+                              - !GetAtt ElasticsearchService.DomainEndpoint
+                              - sensor-data
+                              - _search
+          FunctionName:
+              !Join
+                  - "-"
+                  -
+                      - graphcreator
+                      - !Ref AWS::StackName
+          Handler: lambda/lambda_function.lambda_handler
+          MemorySize: 256
+          Role: !GetAtt GraphCreatorRole.Arn
+          Runtime: python3.6
+          Timeout: 15
+  SensorData2DB:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: sd2db.zip
+      Environment:
+          Variables:
+              TABLE_NAME: !Ref SensorData
+      FunctionName: !Sub "sensordata2db-${AWS::StackName}"
+      Handler: lambda/lambda_function.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt SD2DBRole.Arn
+      Runtime: python3.6
+      Timeout: 15
+  SensorData2ES:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+          S3Bucket: !Ref S3BucketName
+          S3Key: sd2es.zip
+      Environment:
+          Variables:
+              ES_ENDPOINT:
+                  !Join
+                      - "/"
+                      -
+                          - !GetAtt ElasticsearchService.DomainEndpoint
+                          - _bulk
+      FunctionName: !Sub "sensordata2es-${AWS::StackName}"
+      Handler: lambda/lambda_function.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt SD2ESRole.Arn
+      Runtime: python3.6
+      Timeout: 15
+Outputs:
+    SensorDataDBName:
+      Value: !Ref SensorData
+    SensorMetadataDBName:
+      Value: !Ref SensorMetadata
+    SensorAssociationDBName:
+      Value: !Ref SensorAssociation
+    APIGatewayRole:
+      Value: !GetAtt APIGatewayRole.Arn
+    GraphCreatorName:
+      Value: !Ref GraphCreator
+    SensorData2DBName:
+      Value: !Ref SensorData2DB
+    SensorData2ESName:
+      Value: !Ref SensorData2ES
