@@ -3,7 +3,7 @@ This program is a demonstration application that uses an Apple iPAD to produce a
 
 Created by Nikita Tsvetkov, Viet Ly, and Kim Phan
 
-Project Leads: Sergio Gago, Ph.D., Michael Klopfer, Ph.D., Joy Pixley, Ph.D., and Prof. G.P. Li
+Project Mentors: Sergio Gago, Ph.D., Michael Klopfer, Ph.D., Joy Pixley, Ph.D., and Prof. G.P. Li
 
 University of California, Irvine - California Plug Load Research Center (CalPlug)
 
