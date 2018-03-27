@@ -1,0 +1,582 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Percept AWS template
+Parameters:
+  S3BucketName:
+    Type: String
+Resources:
+  # Backend: these resources are used to store, transform, and show data
+  # Chttps://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-policy.html
+  KinesisReadOnly:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub "sensorstreamro-${AWS::StackName}"
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - kinesis:Get*
+              - kinesis:List*
+              - kinesis:Describe*
+            Resource: !GetAtt SensorKinesisStream.Arn
+      Roles:
+        - Ref: SD2DBRole
+        - Ref: SD2ESRole
+  # Create IAM roles. See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+  SD2DBRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        -
+          PolicyName: dynamodb-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: dynamodb:PutItem
+                Resource: !GetAtt SensorData.Arn
+  SD2ESRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        -
+          PolicyName: es-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: es:HttpPost
+                Resource: !GetAtt ElasticsearchService.DomainArn
+  GraphCreatorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        -
+          PolicyName: db-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action: dynamodb:GetItem
+                Resource: !GetAtt SensorMetadata.Arn
+              -
+                Effect: Allow
+                Action: es:*
+                Resource: !GetAtt ElasticsearchService.DomainArn
+  # Define DynamoDB tables
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-dynamodb-table.html
+  SensorData:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: SensorHash
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: !Sub "SensorData-${AWS::StackName}"
+      KeySchema:
+        -
+          AttributeName: SensorHash
+          KeyType: HASH
+  SensorMetadata:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: uid
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: !Sub "SensorMetadata-${AWS::StackName}"
+      KeySchema:
+        -
+          AttributeName: uid
+          KeyType: HASH
+  SensorAssociation:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: uid
+          AttributeType: S
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      TableName: !Sub "SensorAssociation-${AWS::StackName}"
+      KeySchema:
+        -
+          AttributeName: uid
+          KeyType: HASH
+  # Create Kinesis Stream
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-kinesis-stream.html
+  SensorKinesisStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      Name: !Sub "SensorStream-${AWS::StackName}"
+      ShardCount: 1
+  # Create elasticsearch resource
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-elasticsearch-domain.html
+  ElasticsearchService:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: !Sub "sensores-${AWS::StackName}"
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 15
+        VolumeType: standard
+      ElasticsearchClusterConfig:
+        DedicatedMasterEnabled: false
+        InstanceCount: 1
+        InstanceType: t2.small.elasticsearch
+        ZoneAwarenessEnabled: false
+      ElasticsearchVersion: 5.5
+  # Define AWS Lambda functions
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-function.html
+  GraphCreator:
+      Type: AWS::Lambda::Function
+      Properties:
+          Code:
+              S3Bucket: !Ref S3BucketName
+              S3Key: graphcreator.zip
+          Environment:
+              Variables:
+                  ES_ENDPOINT:
+                    !Sub
+                      - "https://${domain}/sensor-data/_search"
+                      - { domain: !GetAtt ElasticsearchService.DomainEndpoint }
+          FunctionName: !Sub "graphcreator-${AWS::StackName}"
+          Handler: lambda/lambda_function.lambda_handler
+          MemorySize: 256
+          Role: !GetAtt GraphCreatorRole.Arn
+          Runtime: python3.6
+          Timeout: 15
+  SensorData2DB:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref S3BucketName
+        S3Key: sd2db.zip
+      Environment:
+          Variables:
+              TABLE_NAME: !Ref SensorData
+      FunctionName: !Sub "sensordata2db-${AWS::StackName}"
+      Handler: lambda/lambda_function.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt SD2DBRole.Arn
+      Runtime: python3.6
+      Timeout: 15
+  SensorData2ES:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+          S3Bucket: !Ref S3BucketName
+          S3Key: sd2es.zip
+      Environment:
+        Variables:
+          ES_ENDPOINT:
+            !Sub
+              - "https://${domain}/_bulk"
+              - { domain: !GetAtt ElasticsearchService.DomainEndpoint }
+      FunctionName: !Sub "sensordata2es-${AWS::StackName}"
+      Handler: lambda/lambda_function.lambda_handler
+      MemorySize: 128
+      Role: !GetAtt SD2ESRole.Arn
+      Runtime: python3.6
+      Timeout: 15
+  # Create triggers for Lambda functions
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-eventsourcemapping.html
+  SD2DBTrigger:
+    DependsOn: KinesisReadOnly
+    Type: "AWS::Lambda::EventSourceMapping"
+    Properties:
+      Enabled: true
+      EventSourceArn: !GetAtt SensorKinesisStream.Arn
+      FunctionName: !GetAtt SensorData2DB.Arn
+      StartingPosition: LATEST
+  SD2ESTrigger:
+    DependsOn: KinesisReadOnly
+    Type: "AWS::Lambda::EventSourceMapping"
+    Properties:
+      Enabled: true
+      EventSourceArn: !GetAtt SensorKinesisStream.Arn
+      FunctionName: !GetAtt SensorData2ES.Arn
+      StartingPosition: LATEST
+  # Allow API gateway to invoke lambda
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-lambda-permission.html
+  GraphCreatorInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt GraphCreator.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        !Sub
+          - "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${apigateway}/*/*/*"
+          - { apigateway: !Ref APIGateway }
+  APIRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+        - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+      Policies:
+        -
+          PolicyName: kinesis-access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - kinesis:PutRecord
+                  - kinesis:PutRecords
+                  - kinesis:GetShardIterator
+                  - kinesis:GetRecords
+                  - kinesis:DescribeStream
+                Resource: !GetAtt SensorKinesisStream.Arn
+  # Create API gateway
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-apigateway-restapi.html
+  APIGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      BinaryMediaTypes:
+        - "image~1png"
+      FailOnWarnings: true
+      Body:
+        swagger: "2.0"
+        info:
+          version: "2018-03-26T16:31:05Z"
+          title: !Sub "edvapi-${AWS::StackName}"
+        x-amazon-apigateway-request-validators:
+          params-only:
+            validateRequestParameters: true
+            validateRequestBody: false
+          body-only:
+            validateRequestParameters: false
+            validateRequestBody: true
+        schemes:
+          - "https"
+        paths:
+          /graph:
+            get:
+              x-amazon-apigateway-request-validator: params-only
+              consumes:
+              - "application/json"
+              produces:
+              - "image~1png"
+              - "application/json"
+              parameters:
+              - name: "uid"
+                in: "query"
+                required: true
+                type: "string"
+              responses:
+                '200':
+                  description: "200 response"
+                  schema:
+                    $ref: "#/definitions/Empty"
+                  headers:
+                    Content-Type:
+                      type: "string"
+              x-amazon-apigateway-integration:
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseParameters:
+                      method.response.header.Content-Type: "'image/png'"
+                    contentHandling: "CONVERT_TO_BINARY"
+                uri:
+                  !Sub
+                    - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${functionarn}/invocations"
+                    - { functionarn: !GetAtt GraphCreator.Arn }
+                passthroughBehavior: "when_no_templates"
+                httpMethod: "POST"
+                requestTemplates:
+                  application/json: "{ \"uid\": \"$input.params('uid')\" }"
+                contentHandling: "CONVERT_TO_TEXT"
+                type: "aws"
+          /sensor-association:
+            get:
+              x-amazon-apigateway-request-validator: params-only
+              consumes:
+              - "application/json"
+              produces:
+              - "application/json"
+              parameters:
+              - name: "uid"
+                in: "query"
+                required: true
+                type: "string"
+              responses:
+                '200':
+                  description: "200 response"
+                  schema:
+                    $ref: "#/definitions/Empty"
+              x-amazon-apigateway-integration:
+                credentials: !GetAtt APIRole.Arn
+                responses:
+                  default:
+                    statusCode: "200"
+                    responseTemplates:
+                      application/json: "#set($inputRoot = $input.path('$'))\r\n{\r\n    \"\
+                        uid\": \"$inputRoot.Item.uid.S\",\r\n    \"data\": \"$util.escapeJavaScript($inputRoot.Item.data.S)\"\
+                        \r\n}"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:dynamodb:action/GetItem"
+                passthroughBehavior: "when_no_templates"
+                httpMethod: "POST"
+                requestTemplates:
+                  application/json:
+                    !Sub
+                      - |
+                        {
+                          "TableName": "${table}",
+                          "Key": {
+                            "uid": { "S": "$input.params('uid')"}
+                          }
+                        }
+                      - { table: !Ref SensorAssociation }
+                type: "aws"
+            post:
+              x-amazon-apigateway-request-validator: body-only
+              consumes:
+              - "application/json"
+              produces:
+              - "application/json"
+              parameters:
+              - in: "body"
+                name: "SensorAssociation"
+                required: true
+                schema:
+                  $ref: "#/definitions/SensorAssociation"
+              responses:
+                '200':
+                  description: "200 response"
+                  schema:
+                    $ref: "#/definitions/Empty"
+              x-amazon-apigateway-integration:
+                credentials: !GetAtt APIRole.Arn
+                responses:
+                  default:
+                    statusCode: "200"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:dynamodb:action/PutItem"
+                passthroughBehavior: "when_no_templates"
+                httpMethod: "POST"
+                requestTemplates:
+                  application/json:
+                    !Sub
+                      - |
+                        {
+                          "TableName": "${table}",
+                          "Item": {
+                            "uid": {"S": "$input.path('$').uid"},
+                            "data": {"S": "$util.escapeJavaScript($input.path('$').data)"}
+                          }
+                        }
+                      - { table: !Ref SensorAssociation }
+                type: "aws"
+          /sensordata:
+            post:
+              x-amazon-apigateway-request-validator: body-only
+              consumes:
+              - "application/json"
+              produces:
+              - "application/json"
+              parameters:
+              - in: "body"
+                name: "SensorData"
+                required: true
+                schema:
+                  $ref: "#/definitions/SensorData"
+              responses:
+                '200':
+                  description: "200 response"
+                  schema:
+                    $ref: "#/definitions/Empty"
+              x-amazon-apigateway-integration:
+                credentials: !GetAtt APIRole.Arn
+                responses:
+                  default:
+                    statusCode: "200"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:kinesis:action/PutRecord"
+                passthroughBehavior: "never"
+                httpMethod: "POST"
+                requestTemplates:
+                  application/json:
+                    !Sub
+                      - |
+                        {
+                          "Data": "$util.base64Encode($input.json('$'))",
+                          "PartitionKey": "DEFAULTPARTITION",
+                          "StreamName": "${stream}"
+                        }
+                      - { stream: !Ref SensorKinesisStream }
+                type: "aws"
+          /set-sensor:
+            post:
+              x-amazon-apigateway-request-validator: body-only
+              consumes:
+              - "application/json"
+              produces:
+              - "application/json"
+              parameters:
+              - in: "body"
+                name: "SensorMetadata"
+                required: true
+                schema:
+                  $ref: "#/definitions/SensorMetadata"
+              responses:
+                '200':
+                  description: "200 response"
+                  schema:
+                    $ref: "#/definitions/Empty"
+              x-amazon-apigateway-integration:
+                credentials: !GetAtt APIRole.Arn
+                responses:
+                  default:
+                    statusCode: "200"
+                uri: !Sub "arn:aws:apigateway:${AWS::Region}:dynamodb:action/PutItem"
+                passthroughBehavior: "when_no_templates"
+                httpMethod: "POST"
+                requestTemplates:
+                  application/json:
+                    !Sub
+                      - |
+                        #set($tableName = "${table}")
+                        #set($inputRoot = $input.path('$'))
+                        {
+                          "TableName": "$tableName",
+                          "Item": {
+                            "uid": {"S": "$inputRoot.uid"},
+                            "name": {"S": "$inputRoot.name"},
+                            "unit": {"S": "$inputRoot.unit"},
+                            "attribute": {"S": "$inputRoot.attribute"},
+                            "data": {"S": "$util.escapeJavaScript($inputRoot.data)"}
+                          }
+                        }
+                      - { table: !Ref SensorMetadata}
+                type: "aws"
+        definitions:
+          SensorAssociation:
+            type: "object"
+            required:
+            - "data"
+            - "uid"
+            properties:
+              uid:
+                type: "string"
+              data:
+                type: "string"
+          Empty:
+            type: "object"
+          SensorData:
+            type: "object"
+            required:
+            - "Current"
+            - "CurrentSummationDelivered"
+            - "PowerFactor"
+            - "timestamp"
+            - "uid"
+            properties:
+              timestamp:
+                type: "string"
+              PowerFactor:
+                type: "integer"
+              CurrentSummationDelivered:
+                type: "integer"
+              InstantaneousDemand:
+                type: "integer"
+              uid:
+                type: "string"
+              Current:
+                type: "integer"
+          SensorMetadata:
+            type: "object"
+            required:
+            - "attribute"
+            - "data"
+            - "name"
+            - "uid"
+            properties:
+              name:
+                type: "string"
+              attribute:
+                type: "string"
+              data:
+                type: "string"
+              uid:
+                type: "string"
+              unit:
+                type: "string"
+  # Deploy to deployment stage
+  # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-apigateway-stage.html
+  APIDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    Properties:
+      RestApiId: !Ref APIGateway
+      StageName: Beta
+Outputs:
+    ElasticEndpoint:
+      Value:
+        !Sub
+          - "https://${domain}"
+          - { domain: !GetAtt ElasticsearchService.DomainEndpoint}
+    Region:
+      Value: !Ref AWS::Region
+    APIEndpoint:
+      Value:
+        !Sub
+          - "https://${apicode}.execute-api.${AWS::Region}.amazonaws.com/Beta"
+          - { apicode: !Ref APIGateway }
