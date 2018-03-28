@@ -72,8 +72,8 @@ Resources:
             Statement:
               -
                 Effect: Allow
-                Action: es:HttpPost
-                Resource: !GetAtt ElasticsearchService.DomainArn
+                Action: es:ESHttpPost
+                Resource: "*"
   GraphCreatorRole:
     Type: AWS::IAM::Role
     Properties:
@@ -102,7 +102,7 @@ Resources:
               -
                 Effect: Allow
                 Action: es:*
-                Resource: !GetAtt ElasticsearchService.DomainArn
+                Resource: "*"
   # Define DynamoDB tables
   # See https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-dynamodb-table.html
   SensorData:
@@ -179,14 +179,15 @@ Resources:
       Type: AWS::Lambda::Function
       Properties:
           Code:
-              S3Bucket: !Ref S3BucketName
-              S3Key: graphcreator.zip
+            S3Bucket: !Ref S3BucketName
+            S3Key: graphcreator.zip
           Environment:
-              Variables:
-                  ES_ENDPOINT:
-                    !Sub
-                      - "https://${domain}/sensor-data/_search"
-                      - { domain: !GetAtt ElasticsearchService.DomainEndpoint }
+            Variables:
+              ES_ENDPOINT:
+                !Sub
+                  - "https://${domain}/sensor-data/_search"
+                  - { domain: !GetAtt ElasticsearchService.DomainEndpoint }
+              TABLE_NAME: !Ref SensorMetadata
           FunctionName: !Sub "graphcreator-${AWS::StackName}"
           Handler: lambda/lambda_function.lambda_handler
           MemorySize: 256
@@ -200,8 +201,8 @@ Resources:
         S3Bucket: !Ref S3BucketName
         S3Key: sd2db.zip
       Environment:
-          Variables:
-              TABLE_NAME: !Ref SensorData
+        Variables:
+          TABLE_NAME: !Ref SensorData
       FunctionName: !Sub "sensordata2db-${AWS::StackName}"
       Handler: lambda/lambda_function.lambda_handler
       MemorySize: 128
@@ -212,8 +213,8 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-          S3Bucket: !Ref S3BucketName
-          S3Key: sd2es.zip
+        S3Bucket: !Ref S3BucketName
+        S3Key: sd2es.zip
       Environment:
         Variables:
           ES_ENDPOINT:
@@ -266,7 +267,7 @@ Resources:
             Effect: Allow
             Principal:
               Service:
-                - lambda.amazonaws.com
+                - apigateway.amazonaws.com
             Action:
               - sts:AssumeRole
       ManagedPolicyArns:
