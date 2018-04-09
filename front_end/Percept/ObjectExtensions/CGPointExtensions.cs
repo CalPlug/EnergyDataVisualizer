@@ -14,8 +14,24 @@ namespace Percept.ObjectExtensions
 			return new CGPoint(size.Width, size.Height);
 		}
         
+        public static bool WithinThresh(this CGPoint self, CGPoint point, nfloat thresh)
+        {
+            nfloat deltaX = self.X - point.X;
+            if(deltaX > thresh || -deltaX < -thresh)
+            {
+                return false;
+            }
 
-		public static CGPoint FromVector(SCNVector3 vector)
+            nfloat deltaY = self.Y - point.Y;
+            if (deltaY > thresh || -deltaY < -thresh)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public static CGPoint FromVector(SCNVector3 vector)
 		{
 			return new CGPoint(vector.X, vector.Y);
 		}

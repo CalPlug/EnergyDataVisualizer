@@ -28,6 +28,7 @@ namespace Percept
 
         // maybe we can combine this one with ar tracking quality or hittest point density
         protected const Single QRCODE_DISTANCE_THRESH = 0.2f;
+        protected static nfloat QRCODE_CENTER_OFFSET_THRESH = 0.4f;
         // for flickering
         protected const Single ANCHOR_SQUARED_DIFFERENCE_THROWAWAY_THRESH = 0.01f;
         // to stop unnecessary updates in sensor displays from qr code locations
@@ -55,7 +56,7 @@ namespace Percept
         // how much worse confidence can be when detecting the same object.
         protected static float CONFIDENCE_DELTA = 0.05f;
         // TODO we could possibly persist distance to help place at the right spot
-        protected HitDistanceAverager hitDistanceAverager = new HitDistanceAverager(5);
+        protected ObjectHitDistanceAverager hitDistanceAverager = new ObjectHitDistanceAverager(15);
         // can have all nulls or 1 value, 4 nulls, etc.. must set used manually
         protected FixedArray<VNClassificationObservation> lastClassifications =
             new FixedArray<VNClassificationObservation>(CLASSIFICATIONS_SIZE);
@@ -77,7 +78,7 @@ namespace Percept
         // how much to offset display from its original position
         protected static SCNVector3 DISPLAY_OFFSET = new SCNVector3(-0.2f, 0.3f, 0);
         // displays can't be made more than this distance away from user.
-        protected const Single DISPLAY_DISTANCE_CLAMP = 2.0f; 
+        protected const Single DISPLAY_DISTANCE_CLAMP = 1.0f; 
         // just a useful value for 90 degrees.
         protected const Single NINETY = (Single)Math.PI / 2;
 
@@ -240,35 +241,6 @@ namespace Percept
             HideClassificationPicker();
         }
 
-        // GC.KeepAlive(currFrame); is used to keep other threads from deleting this frame until it is not needed.
-        // on the other hand if we don't dispose of it soon enough, our application doesn't render.
-        protected ARHitTestResult FeatureHitTestFromPoint(CGPoint point)
-        {
-            if(currFrame == null || point == null)
-            {
-                return null;
-            }
-            ARHitTestResult[] hitTestResults = null;
-            try
-            {
-
-                hitTestResults = currFrame.HitTest(point,
-                ARHitTestResultType.FeaturePoint | ARHitTestResultType.ExistingPlaneUsingGeometry
-                | ARHitTestResultType.EstimatedHorizontalPlane);
-                if (hitTestResults != null && hitTestResults.Length > 0)
-                {
-                    return hitTestResults[0];
-                }
-                GC.KeepAlive(currFrame);
-                return null;
-            }
-            catch(Exception e)
-            {
-                Debug.Print("FeatureHitTestFromPoint " + e.Message);
-                return null;
-            }
-        }
-
         protected void SetSelectionText(string sensorId)
         {
             string text = "Selected: " + sensorId;
@@ -330,26 +302,9 @@ namespace Percept
             Debug.Print("DisplayNewObjectMapping");
             if (idToSensorDisplay.TryGetValue(sensorId, out SensorDisplay sensor))
             {
-                ARHitTestResult centerHit = null;
-                try
+                if (latestHits.GetMedian(out HitObject centerHit))
                 {
-                    if(currFrame != null)
-                    {
-                        centerHit = FeatureHitTestFromPoint(snView.Bounds.GetMidpoint());
-                        GC.KeepAlive(currFrame);
-                    }
-                    
-                }
-                catch (Exception e)
-                {
-                    Debug.Print("DisplayNewObjectMapping exception when hit testing " + e.Message);
-                }
-
-                if (centerHit != null)
-                {
-                    
-
-                    SCNVector3 pos = centerHit.WorldTransform.Translation();
+                    SCNVector3 pos = centerHit.Transform.Translation();
                     Debug.Print("pos: " + pos.ToString());
                     Debug.Print("distance: " + centerHit.Distance);
                     if (displayPoints.TryGetValue(sensorId, out Point point))
@@ -378,11 +333,6 @@ namespace Percept
                     SCNNode newLine = OffsetLine(sensor, newPoint);
                     displayLines[sensorId] = newLine;
                     scene.RootNode.AddChildNode(newLine);
-                }
-                else
-                {
-                    Debug.Print("centerHit == null");
-                    serialSceneQ.DispatchAsync(() => DisplayNewObjectMapping(sensorId));
                 }
             }
             else
@@ -417,18 +367,6 @@ namespace Percept
                 SetSelectionText(sensorId);
                 Debug.PrintWT("GetDisplayContentsForSensor Finish for " + sensorId);
             });
-        }
-
-        protected void GetDisplayForCode(string codeId, CGPoint center)
-        {
-            // Perform a hit test on the ARFrame to find a surface
-            ARHitTestResult centerHit = FeatureHitTestFromPoint(center);
-
-            if (centerHit != null && centerHit.Distance < QRCODE_DISTANCE_THRESH)
-            {
-                Single clampedDistance = Math.Min((Single)centerHit.Distance, DISPLAY_DISTANCE_CLAMP);
-                PlaceDisplayFromCameraTransform(codeId, clampedDistance);
-            }
         }
 
         protected void LoadIfPossible(SensorDisplay display, string codeId)
@@ -565,27 +503,41 @@ namespace Percept
             if (error != null)
             {
                 Debug.Print(error.DebugDescription);
+                return;
+            }
+            
+            VNDetectBarcodesRequest barcodeRequest = request as VNDetectBarcodesRequest;
+            if (barcodeRequest == null)
+            {
+                Debug.Print("VNDetectBarcodesRequest was null in handler");
+                return;
+            }
+
+            var results = barcodeRequest.GetResults<VNBarcodeObservation>();
+            if (results.Length < 1)
+            {
+                return;
+            }
+
+            VNBarcodeObservation result = results[0];
+            CGPoint center = CGPointExtensions.MidPoint(result.BottomLeft, result.TopRight);
+            if(!center.WithinThresh(MIDPOINT, QRCODE_CENTER_OFFSET_THRESH))
+            {
+                return;
+            }
+
+            if (latestHits.GetLatestSample(out HitObject centerHit))
+            {
+                if (centerHit.Distance < QRCODE_DISTANCE_THRESH)
+                {
+                    PlaceDisplayFromCameraTransform(result.PayloadStringValue, (Single)centerHit.Distance);
+                }
             }
             else
             {
-                VNDetectBarcodesRequest barcodeRequest = request as VNDetectBarcodesRequest;
-                if (barcodeRequest == null)
-                {
-                    Debug.Print("VNDetectBarcodesRequest was null in handler");
-                    return;
-                }
-                var results = barcodeRequest.GetResults<VNBarcodeObservation>();
-                if (results.Length > 0)
-                {
-                    VNBarcodeObservation result = results[0];
-                    CGPoint center = CGPointExtensions.MidPoint(result.BottomLeft, result.TopRight);
-
-                    //Debug.Print("center : " + center);
-                    serialSceneQ.DispatchAsync(() =>
-                        GetDisplayForCode(result.PayloadStringValue, center)
-                    );
-                }
+                Debug.Print("QRRequestHanlder latestHits.GetLatestSample(out HitObject centerHit) FAILED");
             }
+            
         }
 
         //IARSCNViewDelegate inherits from SCNSceneRendererDelegate
@@ -607,10 +559,9 @@ namespace Percept
                             Debug.Print("Found object " + obs.Identifier + " with id " + sensorId);
                             try
                             {
-                                    ARHitTestResult centerHit = FeatureHitTestFromPoint(snView.Bounds.GetMidpoint());
-                                    if (centerHit != null)
+                                    if (latestHits.GetLatestSample(out HitObject centerHit))
                                     {
-                                        if (hitDistanceAverager.AddSampleGetMedian(obs.Identifier, centerHit, out HitDistanceAverager.HitObject hit))
+                                        if (hitDistanceAverager.AddSampleGetMedian(obs.Identifier, centerHit, out HitObject hit))
                                         {
                                             Single clampedDistance = Math.Min((Single)centerHit.Distance, DISPLAY_DISTANCE_CLAMP);
                                             serialSceneQ.DispatchAsync(() => PlaceDisplayFromCameraTransform(sensorId, clampedDistance));

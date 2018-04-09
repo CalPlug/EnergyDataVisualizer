@@ -53,6 +53,33 @@ namespace Percept.ObjectExtensions
             }
         }
 
+        public T PeekLatest()
+        {
+            return q.Last();
+        }
+
+        public List<T> PeekNLatest(int n)
+        {
+            if (n < 1 || q.Count < n)
+            {
+                return null;
+            }
+
+            List<T> ret = new List<T>(n);
+
+            int count = 0;
+            foreach (T elem in q.Reverse())
+            {
+                ret.Add(elem);
+                ++count;
+                if (count >= n)
+                {
+                    break;
+                }
+            }
+            return ret;
+        }
+
         public IEnumerator<T> GetEnumerator()
         {
             return q.GetEnumerator();

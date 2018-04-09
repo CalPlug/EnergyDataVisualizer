@@ -90,13 +90,14 @@
   <ItemGroup>
     <Compile Include="Model\AssociationsWrapper.cs" />
     <Compile Include="Model\AWSRestStore.cs" />
+    <Compile Include="Model\ObjectHitDistanceAverager.cs" />
+    <Compile Include="Model\HitObject.cs" />
     <Compile Include="Model\HitDistanceAverager.cs" />
     <Compile Include="Model\SensorObjectAssociation.cs" />
     <Compile Include="Model\IPersistentDataManager.cs" />
     <Compile Include="Model\NMatrix4Serializer.cs" />
     <Compile Include="Model\OfflineStore.cs" />
     <Compile Include="ObjectExtensions\BarcodesRequest.cs" />
-    <Compile Include="ObjectExtensions\CGRectExtensions.cs" />
     <Compile Include="ObjectExtensions\FixedArray.cs" />
     <Compile Include="ObjectExtensions\FixedSizeQueue.cs" />
     <Compile Include="ObjectExtensions\SCNQuaternionExtensions.cs" />

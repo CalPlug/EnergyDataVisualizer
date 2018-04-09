@@ -12,6 +12,7 @@ using Percept.ObjectExtensions;
 using CoreVideo;
 using CoreLocation;
 using Percept.UIElements;
+using CoreGraphics;
 
 namespace Percept
 {
@@ -26,6 +27,8 @@ namespace Percept
 
         //use for reading and writing scene related data.
         protected DispatchQueue serialSceneQ { get; set; }
+
+        protected static CGPoint MIDPOINT = new CGPoint(0.5, 0.5);
 
         //how much distance the plot should be away from the camera when it's first made.
         protected static SCNVector3 SENSOR_DISPLAY_CAMERA_OFFSET = new SCNVector3(0f,0f,-0.5f);//.5m in front of camera
@@ -43,6 +46,7 @@ namespace Percept
         //map sensor ids to  to sensor models
         //protected Dictionary<string, SerializableSensorDisplay> Sensors = new Dictionary<string, SerializableSensorDisplay>();
 
+        protected HitDistanceAverager latestHits = new HitDistanceAverager(15);
 
         //3d objects
         protected VirtualObjectManager virtualObjectManager;
@@ -171,13 +175,6 @@ namespace Percept
             ARCamera camera = currFrame.Camera;
             SCNNode cameraNode = snView.PointOfView;
 
-            //Debug.Print("cameraNode Transform:\n" + cameraNode.Transform);
-            //Debug.Print("cameraNode Position:\n" + cameraNode.Position);
-            //Debug.Print("cameraNode Rotation:\n" + cameraNode.Rotation);
-            //Debug.Print("cameraNode Orientation:\n" + cameraNode.Orientation);
-
-
-
             SCNMatrix4 transform = cameraOffsetTransfom.HasValue ?
                 cameraNode.ConvertTransformToNode(cameraOffsetTransfom.Value, display) :
                 cameraNode.ConvertTransformToNode(SENSOR_DISPLAY_CAMERA_OFFSET_TRANSFORM, display);
@@ -188,37 +185,19 @@ namespace Percept
             //to zero out the y axis so the plot doesn't pitch forward or backward and faces the user (backwards / culled).
             display.Look(new SCNVector3(camPos.X, display.Position.Y, camPos.Z));
 
-            //Debug.Print("display transform before quat:\n" + display.Transform);
-            //Debug.Print("display euler angles before quat:\n" + display.EulerAngles);
-            //Debug.Print("display orientation before quat:\n" + display.Orientation);
-
             display.LocalRotate(Y_FLIP_QUAT);
-            //Debug.Print("display transform after quat:\n" + display.Transform);
-            //Debug.Print("display euler angles after quat:\n" + display.EulerAngles);
-            //Debug.Print("\tdisplay orientation after quat:\n" + display.Orientation);
 
+            // remove twisting on the z rot axis due to tablet rotation passed on thru camera transform.
             if (zOrientCorrection)
             {
-                //remove camera relative roll
-                // (-0.0007383518, 0.1308612, -0.005658311)  forward, no roll
-                // (-0.08546476,   0.1056983, -0.6820469)   forward, roll
-                // (-3.13949,     -0.1361102,  3.126097)    backward, no roll
-                // ( 3.04493,     -0.1060119, -2.399804)    backward, roll
-
                 SCNQuaternion displayQ = display.Orientation;
                 SCNQuaternion twist = SCNQuaternionExtensions.TwistDecompositon(SCNVector3Extensions.UNIT_Z_VEC, displayQ);
-                //Debug.Print("twist\n" + twist);
 
                 SCNQuaternion twistConj = SCNQuaternion.Conjugate(twist);
-                //Debug.Print("twistConj\n" + twistConj);
 
                 SCNQuaternion finalOrientation = SCNQuaternion.Multiply(displayQ, twistConj);
-                //Debug.Print("finalOrientation\n" + finalOrientation);
-
                 display.Orientation = finalOrientation;
             }
-
-            //Sensors.Add(id, new SerializableSensorDisplay(id, display.WorldTransform)); //what's the point if transforms are going to change.
         }
 
         public override bool ShouldAutorotate ()
@@ -278,6 +257,12 @@ namespace Percept
             }
             currPixelbuff = currFrame.CapturedImage;
 
+            //do a hitttest from center of screen.
+            ARHitTestResult centerHit = FeatureHitTestFromPoint(MIDPOINT);
+            if (centerHit != null)
+            {
+                latestHits.AddSample(centerHit);
+            }
         }
 
         public ARFrame GetCurrentFrame()
@@ -296,6 +281,35 @@ namespace Percept
         }
 
         public abstract UILabel GetMessageLabel();
+
+        // GC.KeepAlive(currFrame); is used to keep other threads from deleting this frame until it is not needed.
+        // on the other hand if we don't dispose of it soon enough, our application doesn't render.
+        protected ARHitTestResult FeatureHitTestFromPoint(CGPoint point)
+        {
+            if (currFrame == null || point == null)
+            {
+                return null;
+            }
+            ARHitTestResult[] hitTestResults = null;
+            try
+            {
+
+                hitTestResults = currFrame.HitTest(point,
+                ARHitTestResultType.FeaturePoint | ARHitTestResultType.ExistingPlaneUsingGeometry
+                | ARHitTestResultType.EstimatedHorizontalPlane);
+                if (hitTestResults != null && hitTestResults.Length > 0)
+                {
+                    return hitTestResults[0];
+                }
+                GC.KeepAlive(currFrame);
+                return null;
+            }
+            catch (Exception e)
+            {
+                Debug.Print("FeatureHitTestFromPoint " + e.Message);
+                return null;
+            }
+        }
 
     }
 }
