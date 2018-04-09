@@ -54,7 +54,7 @@ namespace Percept.Model
         static AWSRestStore()
         {
             client = new HttpClient();
-            client.Timeout = TimeSpan.FromMilliseconds(60 * 1000);
+            client.Timeout = TimeSpan.FromSeconds(60.0);
         }
         public AWSRestStore()
         {
@@ -107,12 +107,12 @@ namespace Percept.Model
             {// check if its too old
                 TimeSpan timeSpan = DateTime.Now.Subtract(pImage.time);
                 Debug.Print("last update to image was " + timeSpan.Seconds + " seconds ago.");
-                if (timeSpan.CompareTo(timeSpan) >= 0) // passed our delta
+                if (timeSpan.CompareTo(imageUpdateDelta) >= 0) // passed our delta
                 {//TODO network exceptions?
+                    Debug.Print("Updating an old image for " + plotId);
                     UIImage image = FetchImage(plotId);
                     pImage.time = DateTime.Now;
                     pImage.image = image;
-                    Debug.Print("Updating an old image for " + plotId);
                     return image;
                 }
                 else

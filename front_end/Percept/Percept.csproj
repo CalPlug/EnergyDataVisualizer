@@ -110,6 +110,7 @@
       <DependentUpon>PerceptQRViewController.cs</DependentUpon>
     </Compile>
     <Compile Include="SCNNodes\Point.cs" />
+    <Compile Include="SCNNodes\SensorDisplayZoomIn.cs" />
     <Compile Include="UIElements\ClassificationPickerModel.cs" />
     <Compile Include="UIElements\MessageType.cs" />
     <Compile Include="UIElements\TextManager.cs" />

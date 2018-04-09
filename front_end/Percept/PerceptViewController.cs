@@ -13,6 +13,7 @@ using CoreVideo;
 using CoreLocation;
 using Percept.UIElements;
 using CoreGraphics;
+using SpriteKit;
 
 namespace Percept
 {
@@ -43,8 +44,16 @@ namespace Percept
 
         //map sensor ids to  to sensor displays, the inverse is also mapped with the name property of scnnodes.
         protected Dictionary<string, SensorDisplay> idToSensorDisplay = new Dictionary<string, SensorDisplay>();
-        //map sensor ids to  to sensor models
-        //protected Dictionary<string, SerializableSensorDisplay> Sensors = new Dictionary<string, SerializableSensorDisplay>();
+
+        // the object uid that we can currently map, because we have it picked.
+        protected string selectedDisplayId = null;
+        // the last time the object was tapped (so we could implement double tap)'
+        protected DateTime? lastSelectedTime = null;
+        // time in between taps to consider a double tap
+        protected static TimeSpan doubleTapDelta = TimeSpan.FromMilliseconds(500);
+        // to overlay the zoomin plot
+        protected SKScene skScene = null;
+        protected SensorDisplayZoomIn zoomIn = new SensorDisplayZoomIn();
 
         protected HitDistanceAverager latestHits = new HitDistanceAverager(15);
 
@@ -82,7 +91,9 @@ namespace Percept
             snView.Delegate = this;
             scene = new SCNScene();
             snView.Scene = scene;
- 
+
+            skScene = new SKScene();
+            skScene.AddChild(zoomIn);
 
             serialSceneQ = new DispatchQueue(label: "com.xamarin.Percept.serialSceneQ");
             UserFeedback = new TextManager(this);
@@ -151,6 +162,23 @@ namespace Percept
                     return ARWorldAlignment.Gravity;
             }
         }
+
+        // zooms in on the selectedDisplayId plot
+        protected void ZoomInPlot()
+        {
+            Debug.Print("ZoomInPlot");
+            UIImage plot = store.GetPlot(selectedDisplayId);
+            if (plot == null)
+            {
+                return;
+            }
+            InvokeOnMainThread(() =>
+            {
+                zoomIn.SetContents(plot);
+                snView.OverlayScene = skScene;
+            });
+        }
+
         protected virtual void PlaceInFrontOfCamera(SCNNode node, SCNMatrix4? cameraOffsetTransfom = null)
         {
             if (node == null)

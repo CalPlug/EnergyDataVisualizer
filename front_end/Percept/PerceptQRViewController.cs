@@ -18,6 +18,7 @@ using ImageIO;
 using System.Threading.Tasks;
 using CoreML;
 using Percept.UIElements;
+using SpriteKit;
 
 namespace Percept
 {
@@ -42,6 +43,7 @@ namespace Percept
         // our object mappings
         protected SensorAssociations associations;
 
+
         bool loadingImage = false;
         // to prevent unnecessary image queue dispatch
         bool analyzingFrame = false;
@@ -63,8 +65,7 @@ namespace Percept
         // used to control picker behavior and data.
         protected ClassificationPickerModel pickerModel;
 
-        // the object uid that we can currently map, because we have it picked.
-        protected string selectedDisplayId = null;
+
 
         //              sensorid   static hit point
         protected Dictionary<string, Point> displayPoints;
@@ -101,7 +102,6 @@ namespace Percept
             snView.BringSubviewToFront(ActivityIndicator);
             snView.BringSubviewToFront(OKButton);
             snView.BringSubviewToFront(CancelButton);
-
 
             ActivityIndicator.Hidden = true;
             HideClassificationPicker();
@@ -190,8 +190,33 @@ namespace Percept
             var sensorDisplay = virtualObject as SensorDisplay;
             if (sensorDisplay != null)
             {
-                selectedDisplayId = sensorDisplay.Name;
-                SetSelectionText(selectedDisplayId);
+                if (selectedDisplayId != sensorDisplay.Name)
+                {
+                    selectedDisplayId = sensorDisplay.Name;
+                    SetSelectionText(selectedDisplayId);
+                    lastSelectedTime = DateTime.Now;
+                }
+                else
+                {
+                    if (lastSelectedTime != null)
+                    {
+                        //it's already been selected, check for a double tap to zoom in
+                        TimeSpan delta = DateTime.Now.Subtract(lastSelectedTime.Value);
+                        if (delta.CompareTo(doubleTapDelta) <= 0)
+                        {
+                            lastSelectedTime = null;
+                            serialSceneQ.DispatchAsync(() => ZoomInPlot());
+                        }
+                        else
+                        {
+                            lastSelectedTime = DateTime.Now;
+                        }
+                    }
+                    else
+                    { 
+                        lastSelectedTime = DateTime.Now;
+                    }
+                }
             }
         }
 
@@ -395,6 +420,8 @@ namespace Percept
                 display.Hidden = true;
                 scene.RootNode.Add(display);
                 SetSensorDisplayPositionFromCamera(display, distanceMatrix);
+                GC.KeepAlive(currFrame.Camera);
+                GC.KeepAlive(currFrame);
 
                 if (!idToSensorDisplay.ContainsKey(codeId))
                 {
