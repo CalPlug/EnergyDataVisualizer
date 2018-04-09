@@ -35,9 +35,10 @@ namespace Percept
         //true if we wish to remove rotation about the camera relative z axis when adding planes.
         protected bool zOrientCorrection = true;
 
+        // the aws data base for plots and associations
+        protected IPersistentDataManager store = new AWSRestStore();
 
-        //TODO not sure if this is how we want to keep track of the sensor stuff.
-        //map sensor ids to  to sensor displays
+        //map sensor ids to  to sensor displays, the inverse is also mapped with the name property of scnnodes.
         protected Dictionary<string, SensorDisplay> idToSensorDisplay = new Dictionary<string, SensorDisplay>();
         //map sensor ids to  to sensor models
         //protected Dictionary<string, SerializableSensorDisplay> Sensors = new Dictionary<string, SerializableSensorDisplay>();
@@ -118,7 +119,8 @@ namespace Percept
 
             var configuration = new ARWorldTrackingConfiguration
             {
-                PlaneDetection = ARPlaneDetection.Horizontal,
+                PlaneDetection = ARPlaneDetection.Vertical | ARPlaneDetection.Horizontal,
+                AutoFocusEnabled = true,
                 LightEstimationEnabled = false, // might not need this to just display a plot.
                 // +y = +g.  if we do gravity and heading, then +x is east and +z is south.
                 WorldAlignment = GetAlignment()

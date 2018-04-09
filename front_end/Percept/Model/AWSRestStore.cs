@@ -38,8 +38,8 @@ namespace Percept.Model
 
         protected static HttpClient client;
 
-        protected const string plotUrl = "https://odhebyicjg.execute-api.us-east-1.amazonaws.com/Beta/graph?uid=";
-        protected const string associationsUrl = "https://odhebyicjg.execute-api.us-east-1.amazonaws.com/Beta/sensor-association";
+        protected const string plotUrl = "https://hbnpnzvanc.execute-api.us-east-1.amazonaws.com/Beta/graph?uid=";
+        protected const string associationsUrl = "https://hbnpnzvanc.execute-api.us-east-1.amazonaws.com/Beta/sensor-association";
         protected const string associationsGetUrl = associationsUrl + "?uid=room1";
 
 

@@ -38,8 +38,6 @@ namespace Percept
         protected DispatchQueue serialImageQueue;
         // handler for a qr image reading / recognition
         protected FixVNDetectBarcodesRequest qrRequest;
-        // the aws data base for plots and associations
-        protected IPersistentDataManager store = new AWSRestStore();
         // our object mappings
         protected SensorAssociations associations;
 
@@ -255,7 +253,7 @@ namespace Percept
             {
 
                 hitTestResults = currFrame.HitTest(point,
-                ARHitTestResultType.FeaturePoint | ARHitTestResultType.ExistingPlaneUsingExtent
+                ARHitTestResultType.FeaturePoint | ARHitTestResultType.ExistingPlaneUsingGeometry
                 | ARHitTestResultType.EstimatedHorizontalPlane);
                 if (hitTestResults != null && hitTestResults.Length > 0)
                 {
@@ -421,31 +419,17 @@ namespace Percept
             });
         }
 
-        protected void GetDisplayForCode(string codeId, CGPoint center,
-            CGPoint bottomLeft, CGPoint bottomRight, CGPoint topLeft, CGPoint topRight)
+        protected void GetDisplayForCode(string codeId, CGPoint center)
         {
-                // Perform a hit test on the ARFrame to find a surface
-                ARHitTestResult centerHit = FeatureHitTestFromPoint(center);
-                ARHitTestResult bottomLeftHit = FeatureHitTestFromPoint(bottomLeft);
-                ARHitTestResult bottomRightHit = FeatureHitTestFromPoint(bottomRight);
-                ARHitTestResult topLeftHit = FeatureHitTestFromPoint(topLeft);
-                ARHitTestResult topRightHit = FeatureHitTestFromPoint(topRight);
+            // Perform a hit test on the ARFrame to find a surface
+            ARHitTestResult centerHit = FeatureHitTestFromPoint(center);
 
-                if (centerHit != null && bottomLeftHit != null && bottomRightHit != null
-                    && topLeftHit != null && topRightHit != null)
-                {
-                    if (centerHit.Distance < QRCODE_DISTANCE_THRESH
-                        && bottomLeftHit.Distance < QRCODE_DISTANCE_THRESH
-                        && bottomRightHit.Distance < QRCODE_DISTANCE_THRESH
-                        && topLeftHit.Distance < QRCODE_DISTANCE_THRESH
-                        && topRightHit.Distance < QRCODE_DISTANCE_THRESH)
-                    {
-                        Single clampedDistance = Math.Min((Single)centerHit.Distance, DISPLAY_DISTANCE_CLAMP);
-                        PlaceDisplayFromCameraTransform(codeId, clampedDistance);
-                    }
-                }
+            if (centerHit != null && centerHit.Distance < QRCODE_DISTANCE_THRESH)
+            {
+                Single clampedDistance = Math.Min((Single)centerHit.Distance, DISPLAY_DISTANCE_CLAMP);
+                PlaceDisplayFromCameraTransform(codeId, clampedDistance);
+            }
         }
-
 
         protected void LoadIfPossible(SensorDisplay display, string codeId)
         {
@@ -598,8 +582,7 @@ namespace Percept
 
                     //Debug.Print("center : " + center);
                     serialSceneQ.DispatchAsync(() =>
-                        GetDisplayForCode(result.PayloadStringValue, center,
-                            result.BottomLeft, result.BottomRight, result.TopLeft, result.TopRight)
+                        GetDisplayForCode(result.PayloadStringValue, center)
                     );
                 }
             }

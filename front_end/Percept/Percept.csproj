@@ -45,12 +45,13 @@
     <ConsolePause>false</ConsolePause>
     <MtouchArch>ARM64</MtouchArch>
     <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
-    <CodesignKey>iPhone Developer: nikitat1994@gmail.com (ZVWG28A9TU)</CodesignKey>
+    <CodesignKey>iPhone Developer</CodesignKey>
     <MtouchDebug>true</MtouchDebug>
     <MtouchLink>None</MtouchLink>
     <MtouchFastDev>false</MtouchFastDev>
-    <CodesignProvision>iOS Team Provisioning Profile: com.visualstudio.atikinsoftware.percept</CodesignProvision>
-    <MtouchSdkVersion>11.2</MtouchSdkVersion>
+    <CodesignProvision>
+    </CodesignProvision>
+    <MtouchSdkVersion>11.3</MtouchSdkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|iPhone' ">
     <DebugType>full</DebugType>
