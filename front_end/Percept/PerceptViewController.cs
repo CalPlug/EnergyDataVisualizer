@@ -17,8 +17,8 @@ using SpriteKit;
 
 namespace Percept
 {
-    public abstract partial class PerceptViewController : UIViewController, IARViewControllerDelegate , IARSCNViewDelegate, IARSessionDelegate
-	{
+    public abstract partial class PerceptViewController : UIViewController, IARViewControllerDelegate , IARSCNViewDelegate, IARSessionDelegate, IVirtualObjectManagerDelegate
+    {
         protected ARSCNView snView;
         protected SCNScene scene;
 
@@ -41,6 +41,11 @@ namespace Percept
 
         // the aws data base for plots and associations
         protected IPersistentDataManager store = new AWSRestStore();
+        // a queue for image update tasks
+        protected DispatchQueue serialStoreQueue;
+        // poll delta
+        protected static TimeSpan POLL_DELTA = TimeSpan.FromSeconds(120.0);
+        protected Action pollStoreImages;
 
         //map sensor ids to  to sensor displays, the inverse is also mapped with the name property of scnnodes.
         protected Dictionary<string, SensorDisplay> idToSensorDisplay = new Dictionary<string, SensorDisplay>();
@@ -53,7 +58,7 @@ namespace Percept
         protected static TimeSpan doubleTapDelta = TimeSpan.FromMilliseconds(500);
         // to overlay the zoomin plot
         protected SKScene skScene = null;
-        protected SensorDisplayZoomIn zoomIn = new SensorDisplayZoomIn();
+        protected SensorDisplayZoomIn zoomIn;
 
         protected HitDistanceAverager latestHits = new HitDistanceAverager(15);
 
@@ -93,7 +98,11 @@ namespace Percept
             snView.Scene = scene;
 
             skScene = new SKScene();
+            zoomIn = new SensorDisplayZoomIn(() => HandleZoomInTouch());
             skScene.AddChild(zoomIn);
+
+            serialStoreQueue = new DispatchQueue(label: "com.xamarin.Percept.serialStoreQueue");
+            pollStoreImages = (() =>UpdateSensorDisplays());
 
             serialSceneQ = new DispatchQueue(label: "com.xamarin.Percept.serialSceneQ");
             UserFeedback = new TextManager(this);
@@ -105,6 +114,7 @@ namespace Percept
             snView.Session.Delegate = this;
             //The following requires camera permissions in Info.plist, otherwise we crash (try catch doesn't work)
             ResetTracking();
+            serialStoreQueue.DispatchAfter(new DispatchTime(DispatchTime.Now, POLL_DELTA), pollStoreImages);
         }
 
         [Action("RestartExperience:")]
@@ -151,6 +161,40 @@ namespace Percept
             UserFeedback.ScheduleMessage("SESSION HAS RESET", 7.5, MessageType.PlaneEstimation);
         }
 
+        protected void HandleZoomInTouch()
+        {
+            Debug.Print("HandleZoomInTouch");
+            if (lastSelectedTime != null)
+            {
+                //it's already been selected, check for a double tap to zoom in
+                TimeSpan delta = DateTime.Now.Subtract(lastSelectedTime.Value);
+                if (delta.CompareTo(doubleTapDelta) <= 0)
+                {
+                    lastSelectedTime = null;
+                    serialSceneQ.DispatchAsync(() => ZoomOutPlot());
+                }
+                else
+                {
+                    lastSelectedTime = DateTime.Now;
+                }
+            }
+            else
+            {
+                lastSelectedTime = DateTime.Now;
+            }
+        }
+
+        protected void UpdateSensorDisplays()
+        {
+            Debug.Print("UpdateSensorDisplays()");
+            foreach (var kv in idToSensorDisplay)
+            {
+                SensorDisplay display = kv.Value;
+                display.UpdateContents(store.GetPlot(kv.Key));
+            }
+            serialStoreQueue.DispatchAfter(new DispatchTime(DispatchTime.Now, POLL_DELTA), pollStoreImages);
+        }
+
         protected ARWorldAlignment GetAlignment()
         {
             switch (CLLocationManager.Status)
@@ -176,6 +220,16 @@ namespace Percept
             {
                 zoomIn.SetContents(plot);
                 snView.OverlayScene = skScene;
+            });
+        }
+
+        // zooms in on the selectedDisplayId plot
+        protected void ZoomOutPlot()
+        {
+            Debug.Print("ZoomOutPlot");
+            InvokeOnMainThread(() =>
+            {
+                snView.OverlayScene = null;
             });
         }
 
@@ -339,6 +393,15 @@ namespace Percept
             }
         }
 
+        public abstract void CouldNotPlace(VirtualObject virtualObject);
+
+        public abstract void ObjectTapped(VirtualObject virtualObject);
+
+        public abstract void NothingTapped();
+
+        public abstract void TransformDidChangeFor(VirtualObject virtualObject);
+
+        public abstract void TranslationFinishedFor(VirtualObject virtualObject);
     }
 }
 

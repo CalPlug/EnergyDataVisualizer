@@ -22,7 +22,7 @@ using SpriteKit;
 
 namespace Percept
 {
-    public partial class PerceptQRViewController : PerceptViewController, IVirtualObjectManagerDelegate, IARSCNViewDelegate
+    public partial class PerceptQRViewController : PerceptViewController, IARSCNViewDelegate
     {
 
         public PerceptQRViewController(IntPtr handle) : base(handle) { }
@@ -176,7 +176,7 @@ namespace Percept
             GoBack();
         }
 
-        public void NothingTapped()
+        public override void NothingTapped()
         {
             Debug.Print("PerceptQRViewController NothingTapped()");
             if (selectedDisplayId != null)
@@ -185,7 +185,7 @@ namespace Percept
             }
         }
 
-        public void ObjectTapped(VirtualObject virtualObject)
+        public override void ObjectTapped(VirtualObject virtualObject)
         {
             var sensorDisplay = virtualObject as SensorDisplay;
             if (sensorDisplay != null)
@@ -455,14 +455,7 @@ namespace Percept
             
         }
 
-
-
-
-        public void CouldNotPlace(VirtualObject virtualObject)
-        {
-            //throw new NotImplementedException();
-        }
-        public void TranslationFinishedFor(VirtualObject virtualObject)
+        public override void TranslationFinishedFor(VirtualObject virtualObject)
         {
             //Redo line
             SensorDisplay sensor = virtualObject as SensorDisplay;
@@ -481,7 +474,7 @@ namespace Percept
             }
         }
 
-        public void TransformDidChangeFor(VirtualObject virtualObject)
+        public override void TransformDidChangeFor(VirtualObject virtualObject)
         {
             //hide the line while it's being moved
             SensorDisplay sensor = virtualObject as SensorDisplay;
@@ -645,7 +638,10 @@ namespace Percept
             }
         }
 
-        
+        public override void CouldNotPlace(VirtualObject virtualObject)
+        {
+            //throw new NotImplementedException();
+        }
     }
 }
 

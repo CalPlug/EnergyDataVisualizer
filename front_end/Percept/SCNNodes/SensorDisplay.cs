@@ -35,6 +35,11 @@ namespace Percept.SCNNodes
             AddBackground();
         }
 
+        public void UpdateContents(UIImage image)
+        {
+            geom.Materials[0].Diffuse.Contents = image;
+        }
+
         public SensorDisplay(string id)
         {
             geom = new SCNPlane();

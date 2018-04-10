@@ -13,7 +13,6 @@ namespace Percept
         void CouldNotPlace(VirtualObject virtualObject);
         void ObjectTapped(VirtualObject virtualObject);
         void NothingTapped();
-        void RestartExperience(NSObject sender);
         void TransformDidChangeFor(VirtualObject virtualObject);
         void TranslationFinishedFor(VirtualObject virtualObject);
     }

@@ -58,7 +58,7 @@ namespace Percept.Model
         }
         public AWSRestStore()
         {
-            ImageUpdateDelta = TimeSpan.FromSeconds(15.0);
+            ImageUpdateDelta = TimeSpan.FromSeconds(30.0);
         }
 
         // get the png data from the server.
