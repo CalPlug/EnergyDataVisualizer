@@ -31,9 +31,9 @@ namespace Percept
         protected const Single QRCODE_DISTANCE_THRESH = 0.2f;
         protected static nfloat QRCODE_CENTER_OFFSET_THRESH = 0.4f;
         // for flickering
-        protected const Single ANCHOR_SQUARED_DIFFERENCE_THROWAWAY_THRESH = 0.01f;
+        protected const Single ANCHOR_SQUARED_DIFFERENCE_THROWAWAY_THRESH = 0.02f;
         // to stop unnecessary updates in sensor displays from qr code locations
-        protected const Single CAMERA_DIFFERENCE_THROWAWAY_THRESH = 0.005f;
+        protected const Single CAMERA_DIFFERENCE_THROWAWAY_THRESH = 0.02f;
         // the kind of codes that we are detecting
         protected VNBarcodeSymbology[] symbologies = { VNBarcodeSymbology.QR };
         // task queue for image processing.
@@ -56,7 +56,7 @@ namespace Percept
         // picker and how many we look at when we try to detect objects and show sensor displays to the user.
         protected static int CLASSIFICATIONS_SIZE = 3;
         // how much worse confidence can be when detecting the same object.
-        protected static float CONFIDENCE_DELTA = 0.05f;
+        protected static float CONFIDENCE_DELTA = 0.01f;
         // TODO we could possibly persist distance to help place at the right spot
         protected ObjectHitDistanceAverager hitDistanceAverager = new ObjectHitDistanceAverager(15);
         // can have all nulls or 1 value, 4 nulls, etc.. must set used manually
