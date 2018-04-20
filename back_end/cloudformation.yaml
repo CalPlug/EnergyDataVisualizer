@@ -525,9 +525,6 @@ Resources:
           SensorData:
             type: "object"
             required:
-            - "Current"
-            - "CurrentSummationDelivered"
-            - "PowerFactor"
             - "timestamp"
             - "uid"
             properties:
@@ -543,6 +540,8 @@ Resources:
                 type: "string"
               Current:
                 type: "integer"
+              TemperatureMeasurement:
+                type: "number"
           SensorMetadata:
             type: "object"
             required:
